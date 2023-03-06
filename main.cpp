@@ -29,11 +29,13 @@ int main(int argc, char** argv)
 	vector<Transistor> PDN;
 	vector<Transistor> PUN;
 	
+	cout << "You have entered " << argc << " arguments:" << "\n";
 
-	if (argc < 1 ){
-		cout << "call: ./main [*].sp" << endl;
+	if (argc < 3 ){
+		cout << "call: ./main [*].sp [max_stack]" << endl;
 	}
 	ifstream myfile (argv[1]);
+	int input_stack = strtol(argv[2], NULL, 10);
 
 	if (0==(myfile.is_open())){
 		cout << "Cannot open file:" << argv[1] << endl;
@@ -202,66 +204,17 @@ int main(int argc, char** argv)
 	}
 
 	int circuit_columns = common_nets.size();
-	vector<string> expressions;
-	for(string common_net: common_nets){
-		//find PUN expression for each common_net
-		string pun_expression = find_expression(circuit_columns, common_net, PUN, power_pins, ground_pins);
-		cout << common_net << "=" << pun_expression << endl;
-		//find PDN expression for each common_net
-		string pdn_expression = find_expression(circuit_columns, common_net, PDN, power_pins, ground_pins);
-		cout << common_net << "=" << pdn_expression << endl;
-		//Merge eexpressions into one
-		//expressions.push_back("!("+pun_expression+"*"+pdn_expression+")");
-		expressions.push_back("!" + pdn_expression);
-	}
-
-	string expression;
-
-	if (expressions.size()==1){
-		expression = expressions.front();
+	FILE * out_file;
+	if ((worst_stack_counter(circuit_columns, PUN, power_pins, ground_pins) > input_stack) | (worst_stack_counter(circuit_columns, PDN, power_pins, ground_pins) > input_stack)){
+		out_file = fopen("filter.sdc","a");
+		string dont_use = "set_dont_use " + subcircuit + " TRUE \n";
+		cout << dont_use << endl;
+		fprintf(out_file, dont_use.c_str());
+		fclose (out_file);
 	}
 	else{
-		expression = flatten_expression(common_nets,expressions);
+		return 0;
 	}
-    
-	/*cout << "----------------------------------------" << endl;
-	cout << "PDN Expression: " << find_expression(PDN) << endl;
-	cout << "PUN Expression: " << find_expression(PUN) << endl;
-	cout << "----------------------------------------" << endl;
-	
-	
-	//expression = !(PUN)*PDN
-	
-	expression.append("!(");
-	expression.append(find_expression(PUN));
-	expression.append("*");
-	expression.append(find_expression(PDN));
-	expression.append(")");
-	*/
-
-	cout << "Expression: " << expression << endl; 
-	
-	cout << "----------------------------------------" << endl;
-	cout << "TRUTH TABLE:" << endl;
-	truth_table(in_pins, expression);
-	cout << "ARCS:" << endl;
-	arcs = find_arcs(in_pins, expression);
-	cout << "----------------------------------------" << endl;
-	
-	ofstream out_file(subcircuit + ".arcs");
-	out_file << in_pins.size() << " ";
-	for (auto it = begin(pins); it != end(pins); ++it){
-		out_file << *it << " " ;
-	}
-	
-	out_file << endl;
-	
-	for (auto it = begin(arcs); it != end(arcs); ++it){
-		out_file << *it << endl;
-	}
-
-	out_file.close();
-
     return 0;
 	}
 
